@@ -1,6 +1,6 @@
 local _ = require("gettext")
 return {
-    name = "syncthing",
-    fullname = _("Syncthing"),
-    description = _([[Run Syncthing to synchronize files.]]),
+    name = "filebrowser",
+    fullname = _("Filebrowser"),
+    description = _([[Run Filebrowser server to upload and download files.]]),
 }
