@@ -45,5 +45,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cd filebrowser.koplugin
           gh release delete filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --yes || true
-          gh release create filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --latest --generate-notes filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
+          gh release create filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --latest --generate-notes ../filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
