@@ -9,7 +9,8 @@ Tested on jailbroken Kindle Paperwhite 4 (2018). It probably works on other devi
 ## Installation
 
 1. Copy this repository (at least *_meta.lua* and *main.lua*) into the *plugins/filebrowser.koplugin* directory of your KOReader installation.
-2. Download a Filebrowser binary appropriate for your device from [the Filebrowser website](https://github.com/filebrowser/filebrowser/releases/latest) (most likely `linux-armv7-filebrowser.tar.gz`). Extract the archive and copy the `filebrowser` binary to the `plugins/filebrowser.koplugin` directory.
+2. Download a Filebrowser binary appropriate for your device from [the Filebrowser website](https://github.com/filebrowser/filebrowser/releases/latest) (most likely `linux-armv7-filebrowser.tar.gz`).
+3. Extract the archive and copy the `filebrowser` binary to the `plugins/filebrowser.koplugin` directory.
 
 Done! Restart KOReader and you should find the Filebrowser option in the *Network* section under the gear icon in the top menu. After starting Filebrowser, you can use the web GUI to copy files to and from your e-reader. Go to <http://x.x.x.x>, replacing `x.x.x.x` with your e-reader's IP address. The default username and password are `admin` and `admin`, and can be changed from the web interface.
 
@@ -17,7 +18,7 @@ Done! Restart KOReader and you should find the Filebrowser option in the *Networ
 
    If you need to reset the password or settings, delete the `plugins/filebrowser.koplugin/filebrowser/filebrowser.db` file.
 
-The Filebrowser configuration files, log files and other data are all stored in `plugins/filebrowser.koplugin/filebrowser/filebrowser.db` in the KOReader directory.
+The Filebrowser binary, configuration files, log files and other data are all stored in `plugins/filebrowser.koplugin/filebrowser/` in the KOReader directory.
 
 ## Troubleshooting
 
