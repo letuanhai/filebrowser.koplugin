@@ -1,94 +1,103 @@
+local BD = require("ui/bidi")
 local DataStorage = require("datastorage")
+local Device =  require("device")
 local Dispatcher = require("dispatcher")
-local InfoMessage = require("ui/widget/infomessage") -- luacheck:ignore
+local InfoMessage = require("ui/widget/infomessage")  -- luacheck:ignore
+local InputDialog = require("ui/widget/inputdialog")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local ffiutil = require("ffi/util")
 local logger = require("logger")
 local util = require("util")
 local _ = require("gettext")
+local T = ffiutil.template
 
 local path = DataStorage:getFullDataDir()
-local binPath = path .. "/plugins/syncthing.koplugin/syncthing"
-local dataPath = path .. "/settings/syncthing"
-local logPath = path .. "/settings/syncthing/syncthing.log"
-local pidFilePath = "/tmp/syncthing_koreader.pid"
+local dataPath = "/mnt/us"
+local plugPath = path .. "/plugins/filebrowser.koplugin/filebrowser"
+local binPath = plugPath .. "/filebrowser"
+local logPath = plugPath .. "/filebrowser.log"
+local pidFilePath = "/tmp/filebrowser_koreader.pid"
 
 if not util.pathExists(binPath) or os.execute("start-stop-daemon") == 127 then
     return { disabled = true, }
 end
 
-local Syncthing = WidgetContainer:extend {
-    name = "Syncthing",
+local Filebrowser = WidgetContainer:extend {
+    name = "Filebrowser",
     is_doc_only = false,
 }
 
-function Syncthing:init()
+function Filebrowser:init()
+    self.filebrowser_port = G_reader_settings:readSetting("filebrowser_port") or "80"
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
 end
 
-function Syncthing:start()
-    -- Since Syncthing doesn't start as a deamon by default and has no option to
-    -- set a pidfile, we launch it using the start-stop-daemon helper. On Kobo,
+function Filebrowser:start()
+    -- Since Filebrowser doesn't start as a deamon by default and has no option to
+    -- set a pidfile, we launch it using the start-stop-daemon helper. On Kobo and Kindle,
     -- this command is provided by BusyBox:
-    -- https://busybox.net/downloads/BusyBox.html#start_stop_daemon 
+    -- https://busybox.net/downloads/BusyBox.html#start_stop_daemon
     -- The full version has slightly more options, but seems to be a superset of
     -- the BusyBox version, so it should also work with that:
     -- https://man.cx/start-stop-daemon(8)
 
     -- Use a pidfile to identify the process later, set --oknodo to not fail if
     -- the process is already running and set --background to start as a
-    -- background process. On Syncthing itself, specify that it shouldn't open
-    -- the browser, set the home directory (for configuration files) and a log
-    -- file (which is rotated with max-size and max-old-files).
+    -- background process. On Filebrowser itself, set the root directory,
+    -- and a log file.
     local cmd = string.format(
-        "start-stop-daemon --make-pidfile --pidfile %s -S --oknodo --background "
-        .. "--exec %s -- --no-browser --home=%s "
-        .. "--logfile=%s --log-max-size=1000 --log-max-old-files=1",
+        "start-stop-daemon -S "
+        .. "--make-pidfile --pidfile %s " -- pidFilePath
+        .. "--oknodo "
+        .. "--background "
+        .. "--exec %s " -- binPath
+        .. "-- "
+        .. "-a 0.0.0.0 "
+        .. "-r %s " -- dataPath
+        .. "-p %s " -- filebrowser_port
+        .. "-l %s", -- logPath
         pidFilePath,
         binPath,
+
         dataPath,
+        self.filebrowser_port,
         logPath
     )
 
-    -- Ensure that the home/data/configurations directory exists
-    if not util.pathExists(dataPath) then
-        os.execute("mkdir " .. dataPath)
+    -- Make a hole in the Kindle's firewall
+    if Device:isKindle() then
+    logger.dbg("[Filebrowser] Opening port: ", filebrowser_port)
+        os.execute(string.format("%s %s %s",
+            "iptables -A INPUT -p tcp --dport", self.filebrowser_port,
+            "-m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT"))
+        os.execute(string.format("%s %s %s",
+            "iptables -A OUTPUT -p tcp --sport", self.filebrowser_port,
+            "-m conntrack --ctstate ESTABLISHED -j ACCEPT"))
     end
 
-    -- Check if 127.0.0.1 is bound to the local loopback interface, which is not
-    -- the case by default on Kobo. grep fails with exit code 1 if the IP is not
-    -- found in the output.
-    local checkLocalhostCmd = "/bin/sh -c 'ifconfig lo | grep 127.0.0.1'"
-    logger.dbg("[Network] Check if 127.0.0.1 is bound to local loopback: ", checkLocalhostCmd)
-    if os.execute(checkLocalhostCmd) ~= 0 then
-        local configLocalhostCmd = "ifconfig lo 127.0.0.1"
-        logger.info("[Network] Add 127.0.0.1 to local loopback interface: ", configLocalhostCmd)
-        os.execute(configLocalhostCmd)
-    end
-
-    logger.dbg("[Syncthing] Launching Syncthing: ", cmd)
+    logger.dbg("[Filebrowser] Launching Filebrowser: ", cmd)
 
     local status = os.execute(cmd)
     if status == 0 then
-        logger.dbg("[Syncthing] Syncthing started. Find Syncthing logs at ", logPath)
+        logger.dbg("[Filebrowser] Filebrowser started. Find Filebrowser logs at ", logPath)
         local info = InfoMessage:new {
             timeout = 2,
-            text = _("Syncthing started.")
+            text = _("Filebrowser started.")
         }
         UIManager:show(info)
     else
-        logger.dbg("[Syncthing] Failed to start Syncthing, status: ", status)
+        logger.dbg("[Filebrowser] Failed to start Filebrowser, status: ", status)
         local info = InfoMessage:new {
             icon = "notice-warning",
-            text = _("Failed to start Syncthing."),
+            text = _("Failed to start Filebrowser."),
         }
         UIManager:show(info)
     end
 end
 
-function Syncthing:isRunning()
+function Filebrowser:isRunning()
     -- Use start-stop-daemon -K (to stop a process) in --test mode to find if
     -- there are any matching processes for this pidfile and executable. If
     -- there are any matching processes, this exits with status code 0.
@@ -98,16 +107,16 @@ function Syncthing:isRunning()
         binPath
     )
 
-    logger.dbg("[Syncthing] Check if Syncthing is running: ", cmd)
+    logger.dbg("[Filebrowser] Check if Filebrowser is running: ", cmd)
     
     local status = os.execute(cmd)
 
-    logger.dbg("[Syncthing] Running status exit code (0 -> running): ", status)
+    logger.dbg("[Filebrowser] Running status exit code (0 -> running): ", status)
 
     return status == 0
 end
 
-function Syncthing:stop()
+function Filebrowser:stop()
     -- Use start-stop-daemon -K to stop the process, with --oknodo to exit with
     -- status code 0 if there are no matching processes in the first place.
     local cmd = string.format(
@@ -116,32 +125,42 @@ function Syncthing:stop()
         binPath
     )
 
-    logger.dbg("[Syncthing] Stopping Syncthing: ", cmd)
+    logger.dbg("[Filebrowser] Stopping Filebrowser: ", cmd)
 
+    -- Plug the hole in the Kindle's firewall
+    if Device:isKindle() then
+    logger.dbg("[Filebrowser] Closing port: ", filebrowser_port)
+        os.execute(string.format("%s %s %s",
+            "iptables -D INPUT -p tcp --dport", self.SSH_port,
+            "-m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT"))
+        os.execute(string.format("%s %s %s",
+            "iptables -D OUTPUT -p tcp --sport", self.SSH_port,
+            "-m conntrack --ctstate ESTABLISHED -j ACCEPT"))
+    end
     local status = os.execute(cmd)
     if status == 0 then
-        logger.dbg("[Syncthing] Syncthing stopped.")
+        logger.dbg("[Filebrowser] Filebrowser stopped.")
 
         UIManager:show(InfoMessage:new {
-            text = _("Syncthing stopped."),
+            text = _("Filebrowser stopped!"),
             timeout = 2,
         })
 
         if util.pathExists(pidFilePath) then
-            logger.dbg("[Syncthing] Removing PID file at ", pidFilePath)
+            logger.dbg("[Filebrowser] Removing PID file at ", pidFilePath)
             os.remove(pidFilePath)
         end
     else
-        logger.dbg("[Syncthing] Failed to stop Syncthing, status: ", status)
+        logger.dbg("[Filebrowser] Failed to stop Filebrowser, status: ", status)
 
         UIManager:show(InfoMessage:new {
             icon = "notice-warning",
-            text = _("Failed to stop Syncthing.")
+            text = _("Failed to stop Filebrowser.")
         })
     end  
 end
 
-function Syncthing:onToggleSyncthing()
+function Filebrowser:onToggleFilebrowser()
     if self:isRunning() then
         self:stop()
     else
@@ -149,14 +168,14 @@ function Syncthing:onToggleSyncthing()
     end
 end
 
-function Syncthing:addToMainMenu(menu_items)
-    menu_items.syncthing = {
-        text = _("Syncthing"),
+function Filebrowser:addToMainMenu(menu_items)
+    menu_items.filebrowser = {
+        text = _("Filebrowser"),
         sorting_hint = "network",
         keep_menu_open = true,
         checked_func = function() return self:isRunning() end,
         callback = function(touchmenu_instance)
-            self:onToggleSyncthing()
+            self:onToggleFilebrowser()
             -- sleeping might not be needed, but it gives the feeling
             -- something has been done and feedback is accurate
             ffiutil.sleep(1)
@@ -165,9 +184,9 @@ function Syncthing:addToMainMenu(menu_items)
     }
 end
 
-function Syncthing:onDispatcherRegisterActions()
-    Dispatcher:registerAction("toggle_syncthing",
-        { category = "none", event = "ToggleSyncthing", title = _("Toggle Syncthing"), general = true })
+function Filebrowser:onDispatcherRegisterActions()
+    Dispatcher:registerAction("toggle_filebrowser",
+        { category = "none", event = "ToggleFilebrowser", title = _("Toggle Filebrowser"), general = true })
 end
 
-return Syncthing
+return Filebrowser
