@@ -40,11 +40,10 @@ jobs:
         with:
           name: filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
           path: filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
-#      - name: upload release
-#        id: upload
-#        env:
-#          GH_TOKEN: ${{ github.token }}
-#        run: |
-#          gh release delete build --yes || true
-#          gh release create build --latest --generate-notes alpine.zip
-#
+      - name: upload release
+        id: upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --yes || true
+          gh release create filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --latest --generate-notes filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
