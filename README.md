@@ -1,6 +1,8 @@
-# Filebrowser KOReader Plugin
+# ![Filebrowser logo](https://avatars.githubusercontent.com/u/35781395?s=48&v=4) Filebrowser KOReader Plugin
 
-Run Filebrowser server from within KOReader. This plugin adds a menu item to start and stop the Filebrowser server in the *Network* section of the KOReader menu.
+*Run Filebrowser server from within KOReader.*
+
+This plugin adds a menu item to start and stop the Filebrowser server in the *Network* section of the KOReader menu.
 
 Tested on jailbroken Kindle Paperwhite 4 (2018). It probably works on other devices (including Kobos and other jailbroken Kindles). Please report back (in the Issues tracker!) if it does or doesn't.
 
@@ -29,4 +31,4 @@ The Filebrowser configuration files, log files and other data are all stored in 
 
 ---
 
-This code is primarily based on [syncthing.koplugin](https://github.com/arthurrump/syncthing.koplugin), which is itself primarily based on [SSH.koplugin](https://github.com/koreader/koreader/tree/master/plugins/SSH.koplugin), available under the [AGPL-3.0 license](https://github.com/koreader/koreader/blob/master/COPYING).
+This code is primarily based on [syncthing.koplugin](https://github.com/arthurrump/syncthing.koplugin), which is itself primarily based on [SSH.koplugin](https://github.com/koreader/koreader/tree/master/plugins/SSH.koplugin), all of which are available under the [AGPL-3.0 license](https://github.com/koreader/koreader/blob/master/COPYING).
