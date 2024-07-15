@@ -6,7 +6,11 @@ This plugin adds a menu item to start and stop the Filebrowser server in the *Ne
 
 Tested on jailbroken Kindle Paperwhite 4 (2018). It probably works on other devices (including Kobos and other jailbroken Kindles). Please report back (in the Issues tracker!) if it does or doesn't.
 
-## Installation
+## Easy Installation (with bundled `filebrowser` binary)
+
+1. Download and extract [the latest release](https://github.com/b-/filebrowser.koplugin/releases/latest) for your platform, and copy it to the `plugins/filebrowser.koplugin` directory of your KOReader installation.
+
+## Custom Installation (add your own `filebrowser` binary)
 
 1. Copy this repository (at least *_meta.lua* and *main.lua*) into the *plugins/filebrowser.koplugin* directory of your KOReader installation.
 2. Download a Filebrowser binary appropriate for your device from [the Filebrowser website](https://github.com/filebrowser/filebrowser/releases/latest) (most likely `linux-armv7-filebrowser.tar.gz`).
