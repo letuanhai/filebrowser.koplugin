@@ -32,19 +32,19 @@ jobs:
         id: release_name
         run: |
           FILEBROWSER_TAG="${{steps.get_filebrowser.outputs.tag_name}}"
-          echo "OUTFILE=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" | tee -a "$GITHUB_OUTPUT"
+          echo "outfile=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" >> "$GITHUB_OUTPUT"
           # examples: filebrowser.koplugin_v1.0-2.30.0.tar.gz, filebrowser.koplugin_main-2.30.0.tar.gz
       - name: Compress archive
-        run: tar -czvf "${{  steps.get_filebrowser.outputs.OUTFILE  }}" filebrowser.koplugin
+        run: tar -czvf "${{  steps.release_name.outputs.outfile  }}" filebrowser.koplugin
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{  steps.get_filebrowser.outputs.outfile  }}
-          path: ${{  steps.get_filebrowser.outputs.outfile  }}
+          name: ${{  steps.release_name.outputs.outfile  }}
+          path: ${{  steps.release_name.outputs.outfile  }}
       - name: upload release
         id: upload
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd filebrowser.koplugin
-            gh release delete ${{  steps.get_filebrowser.outputs.outfile  }} --yes || true
-            gh release create ${{  steps.get_filebrowser.outputs.outfile  }} --latest --generate-notes ../${{  steps.get_filebrowser.outputs.outfile  }}
+            gh release delete ${{  steps.release_name.outputs.outfile  }} --yes || true
+            gh release create ${{  steps.release_name.outputs.outfile  }} --latest --generate-notes ../${{  steps.release_name.outputs.outfile  }}
