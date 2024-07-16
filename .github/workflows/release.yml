@@ -32,10 +32,10 @@ jobs:
         id: release_name
         run: |
           FILEBROWSER_TAG="${{steps.get_filebrowser.outputs.tag_name}}"
-          echo "outfile=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "OUTFILE=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" | tee -a "$GITHUB_OUTPUT"
           # examples: filebrowser.koplugin_v1.0-2.30.0.tar.gz, filebrowser.koplugin_main-2.30.0.tar.gz
       - name: Compress archive
-        run: tar -czvf "${{  steps.get_filebrowser.outputs.outfile  }}" filebrowser.koplugin
+        run: tar -czvf "${{  steps.get_filebrowser.outputs.OUTFILE  }}" filebrowser.koplugin
       - uses: actions/upload-artifact@v4
         with:
           name: ${{  steps.get_filebrowser.outputs.outfile  }}
