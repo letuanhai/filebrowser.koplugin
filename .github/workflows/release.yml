@@ -55,6 +55,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
       - run: gh release delete ${{  needs.build.outputs.tag  }} --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: ncipollo/release-action@v1
         with:
           tag: "${{  needs.build.outputs.tag  }}"
