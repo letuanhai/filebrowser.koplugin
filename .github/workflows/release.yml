@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-            arch: [ linux-armv7, linux-arm64 ]
+            platform: [ linux-armv7, linux-arm64 ]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@main
@@ -25,14 +25,14 @@ jobs:
           repository: 'filebrowser/filebrowser'
           latest: true
           preRelease: false
-          fileName: '${{matrix.arch}}-filebrowser.tar.gz'
+          fileName: '${{  matrix.platform  }}-filebrowser.tar.gz'
           out-file-path: 'filebrowser.koplugin/filebrowser'
           extract: true
       - name: Template our release name
         id: release_name
         run: |
           FILEBROWSER_TAG="${{steps.get_filebrowser.outputs.tag_name}}"
-          echo "outfile=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "outfile=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}_${{  matrix.platform  }}.tar.gz" >> "$GITHUB_OUTPUT"
           # examples: filebrowser.koplugin_v1.0-2.30.0.tar.gz, filebrowser.koplugin_main-2.30.0.tar.gz
       - name: Compress archive
         run: tar -czvf "${{  steps.release_name.outputs.outfile  }}" filebrowser.koplugin
