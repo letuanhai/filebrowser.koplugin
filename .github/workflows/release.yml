@@ -14,37 +14,37 @@ jobs:
         matrix:
             arch: [ linux-armv7, linux-arm64 ]
     steps:
-      - name: checkout repo
+      - name: Checkout this repository
         uses: actions/checkout@main
         with:
           path: './filebrowser.koplugin'
-#       - name: Get Filebrowser version to bundle
-#         id: filebrowser_version
-#         env:
-#           VERSION: ${{ github.ref_name }}
-#         run: echo "version=${VERSION%-*} >> $GITHUB_OUTPUT"
-
-      - uses: robinraju/release-downloader@v1
+      - name: Download Filebrowser server binary
+        id: get_filebrowser
+        uses: robinraju/release-downloader@v1
         with:
           repository: 'filebrowser/filebrowser'
           latest: true
           preRelease: false
-          # tag: "${{  steps.filebrowser_version.outputs.version  }}"
           fileName: '${{matrix.arch}}-filebrowser.tar.gz'
           out-file-path: 'filebrowser.koplugin/filebrowser'
           extract: true
-      - run: find
-        name: list files
-      - run: tar -czvf filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz filebrowser.koplugin
+      - name: Template our release name
+        id: release_name
+        run: |
+          FILEBROWSER_TAG="${{steps.get_filebrowser.outputs.tag_name}}"
+          echo "outfile=filebrowser.koplugin_${{  github.ref_name  }}-${FILEBROWSER_TAG#v}.tar.gz" >> "$GITHUB_OUTPUT"
+          # examples: filebrowser.koplugin_v1.0-2.30.0.tar.gz, filebrowser.koplugin_main-2.30.0.tar.gz
+      - name: Compress archive
+        run: tar -czvf "${{  steps.get_filebrowser.outputs.outfile  }}" filebrowser.koplugin
       - uses: actions/upload-artifact@v4
         with:
-          name: filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
-          path: filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
+          name: ${{  steps.get_filebrowser.outputs.outfile  }}
+          path: ${{  steps.get_filebrowser.outputs.outfile  }}
       - name: upload release
         id: upload
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd filebrowser.koplugin
-          gh release delete filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --yes || true
-          gh release create filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz --latest --generate-notes ../filebrowser.koplugin_${{github.ref_name}}_${{matrix.arch}}.tar.gz
+            gh release delete ${{  steps.get_filebrowser.outputs.outfile  }} --yes || true
+            gh release create ${{  steps.get_filebrowser.outputs.outfile  }} --latest --generate-notes ../${{  steps.get_filebrowser.outputs.outfile  }}
