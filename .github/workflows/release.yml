@@ -56,5 +56,5 @@ jobs:
       - uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          name: "${{  needs.build.outputs.tag  }}"
+          tag: "${{  needs.build.outputs.tag  }}"
           artifacts: "*.tar.gz"
