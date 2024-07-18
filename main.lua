@@ -1,3 +1,8 @@
+-- set to the root directory you want to manage
+-- on Kindle this should probably be:
+-- local dataPath = "/mnt/us"
+local dataPath = "/"
+
 local BD = require("ui/bidi")
 local DataStorage = require("datastorage")
 local Device =  require("device")
@@ -13,7 +18,6 @@ local _ = require("gettext")
 local T = ffiutil.template
 
 local path = DataStorage:getFullDataDir()
-local dataPath = "/mnt/us"
 local plugPath = path .. "/plugins/filebrowser.koplugin/filebrowser"
 local binPath = plugPath .. "/filebrowser"
 local logPath = plugPath .. "/filebrowser.log"
