@@ -102,17 +102,17 @@ function Filebrowser:start()
 end
 
 function Filebrowser:isRunning()
-    -- Use start-stop-daemon -K (to stop a process) in --test mode to find if
-    -- there are any matching processes for this pidfile and executable. If
-    -- there are any matching processes, this exits with status code 0.
+    -- Run start-stop-daemon in “stop” mode (-K) with signal 0 (no-op)
+    -- to test whether any process matches this pidfile and executable.
+    -- Exit code: 0 → at least one process found, 1 → none found.
     local cmd = string.format(
-        "start-stop-daemon -K -o -s 0 -p %s -x %s",
+        "start-stop-daemon -K -s 0 -p %s -x %s",
         pidFilePath,
         binPath
     )
 
     logger.dbg("[Filebrowser] Check if Filebrowser is running: ", cmd)
-    
+
     local status = os.execute(cmd)
 
     logger.dbg("[Filebrowser] Running status exit code (0 -> running): ", status)
