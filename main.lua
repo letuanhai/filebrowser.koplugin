@@ -53,10 +53,10 @@ function Filebrowser:start()
     -- and a log file.
     local cmd = string.format(
         "start-stop-daemon -S "
-        .. "--make-pidfile --pidfile %s " -- pidFilePath
-        .. "--oknodo "
-        .. "--background "
-        .. "--exec %s " -- binPath
+        .. "-m -p %s " -- pidFilePath
+        .. "-o "
+        .. "-b "
+        .. "-x %s " -- binPath
         .. "-- "
         .. "-a 0.0.0.0 "
         .. "-r %s " -- dataPath
@@ -106,7 +106,7 @@ function Filebrowser:isRunning()
     -- there are any matching processes for this pidfile and executable. If
     -- there are any matching processes, this exits with status code 0.
     local cmd = string.format(
-        "start-stop-daemon --pidfile %s --exec %s -K --test",
+        "start-stop-daemon -K -o -s 0 -p %s -x %s",
         pidFilePath,
         binPath
     )
@@ -124,7 +124,7 @@ function Filebrowser:stop()
     -- Use start-stop-daemon -K to stop the process, with --oknodo to exit with
     -- status code 0 if there are no matching processes in the first place.
     local cmd = string.format(
-        "start-stop-daemon --pidfile %s --exec %s --oknodo -K",
+        "start-stop-daemon -K -o -p %s -x %s",
         pidFilePath,
         binPath
     )
