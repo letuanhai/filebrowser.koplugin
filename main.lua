@@ -135,10 +135,10 @@ function Filebrowser:stop()
     if Device:isKindle() then
     logger.dbg("[Filebrowser] Closing port: ", filebrowser_port)
         os.execute(string.format("%s %s %s",
-            "iptables -D INPUT -p tcp --dport", self.SSH_port,
+            "iptables -D INPUT -p tcp --dport", self.filebrowser_port,
             "-m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT"))
         os.execute(string.format("%s %s %s",
-            "iptables -D OUTPUT -p tcp --sport", self.SSH_port,
+            "iptables -D OUTPUT -p tcp --sport", self.filebrowser_port,
             "-m conntrack --ctstate ESTABLISHED -j ACCEPT"))
     end
     local status = os.execute(cmd)
