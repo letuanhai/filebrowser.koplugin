@@ -2,6 +2,8 @@
 
 *Run Filebrowser server from within KOReader.*
 
+**Warning: only tested on one device, not frequently maintained.** I only have one KOreader device -- a Kindle Pw4, running a relatively recent firmware. (If anyone wants to donate other devices to me, feel free to reach out or file an issue).
+
 This plugin adds a menu item to start and stop the Filebrowser server in the *Network* section of the KOReader menu.
 
 Tested on jailbroken Kindle Paperwhite 4 (2018). It probably works on other devices (including Kobos and other jailbroken Kindles). Please report back (in the Issues tracker!) if it does or doesn't.
