@@ -34,6 +34,7 @@ local Filebrowser = WidgetContainer:extend {
 
 function Filebrowser:init()
     self.filebrowser_port = G_reader_settings:readSetting("filebrowser_port") or "80"
+    self.filebrowser_password_hash = G_reader_settings:readSetting("filebrowser_password") or "$2a$10$x9hMP5e/71oPI/KCE9vqj.eUQqciNhFFNDzoC4idO.aNehTPlZJnK" -- admin
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
 end
@@ -53,18 +54,20 @@ function Filebrowser:start()
     -- and a log file.
     local cmd = string.format(
         "start-stop-daemon -S "
-        .. "-m -p %s " -- pidFilePath
+        .. "-m -p %s " -- %s: pidFilePath
         .. "-o "
         .. "-b "
-        .. "-x %s " -- binPath
-        .. "-- "
-        .. "-a 0.0.0.0 "
-        .. "-r %s " -- dataPath
-        .. "-p %s " -- filebrowser_port
-        .. "-l %s", -- logPath
+        .. "-x %s " -- %s: binPath
+        .. "-- " -- filebrowser arguments follow
+        .. "--noauth " -- disable authentication
+        .. "--password %s " -- %s: self.filebrowser_password: set password hash to admin
+        .. "-a 0.0.0.0 " -- ip to bind to (0.0.0.0 means all interfaces)
+        .. "-r %s " -- %s: dataPath
+        .. "-p %s " -- %s: filebrowser_port
+        .. "-l %s", -- %s: logPath
         pidFilePath,
         binPath,
-
+        self.filebrowser_password,
         dataPath,
         self.filebrowser_port,
         logPath
