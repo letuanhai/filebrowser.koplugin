@@ -64,7 +64,10 @@ function Filebrowser:start()
         .. "-a 0.0.0.0 " -- ip to bind to (0.0.0.0 means all interfaces)
         .. "-r %s " -- %s: dataPath
         .. "-p %s " -- %s: filebrowser_port
-        .. "-l %s", -- %s: logPath
+        .. "-l %s " -- %s: logPath
+        .. "-c ./plugins/filebrowser.koplugin/config.json "
+        .. "-d ./plugins/filebrowser.koplugin/filebrowser.db "
+        .. " ", -- end arguments
         pidFilePath,
         binPath,
         self.filebrowser_password,
