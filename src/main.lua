@@ -54,13 +54,17 @@ function Filebrowser:config()
     status = os.execute(add_user_cmd)
     logger.dbg("status:", status)
 
-    local disable_auth_cmd = string.format("%s -d %s -c %s config set --auth.method=noauth", bin_path, db_path, config_path) .. silence_cmd
-    logger.dbg("set_noauth:", disable_auth_cmd)
-    status = status + os.execute(disable_auth_cmd)
-    logger.dbg("status:", status)
+    -- local disable_auth_cmd = string.format("%s -d %s -c %s config set --auth.method=noauth", bin_path, db_path, config_path) .. silence_cmd
+    -- logger.dbg("set_noauth:", disable_auth_cmd)
+    -- status = status + os.execute(disable_auth_cmd)
+    -- logger.dbg("status:", status)
 
     if status == 0 then
         logger.info("[Filebrowser] User 'koreader' has been created and auth has been disabled.")
+        local info = InfoMessage:new {
+            text = _("Filebrowser initialized with user 'koreader' and default password 'koreader123456789'. Please change the password after login."),
+        }
+        UIManager:show(info)
     else
         logger.info("[Filebrowser] Failed to reset admin password and auth, status Filebrowser, status:", status)
         local info = InfoMessage:new {
