@@ -39,6 +39,7 @@ local Filebrowser = WidgetContainer:extend {
 function Filebrowser:init()
     self.filebrowser_port = G_reader_settings:readSetting("filebrowser_port") or "80"
     self.filebrowser_password_hash = G_reader_settings:readSetting("filebrowser_password") or "admin"
+    self.allow_no_auth = G_reader_settings:isTrue("filebrowser_allow_no_auth")
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
 end
@@ -56,19 +57,27 @@ function Filebrowser:config()
     status = os.execute(add_user_cmd)
     logger.dbg("status:", status)
 
-    -- local disable_auth_cmd = string.format("%s -d %s -c %s config set --auth.method=noauth", bin_path, db_path, config_path) .. silence_cmd
-    -- logger.dbg("set_noauth:", disable_auth_cmd)
-    -- status = status + os.execute(disable_auth_cmd)
-    -- logger.dbg("status:", status)
+    local config_auth_method_cmd = string.format("%s -d %s -c %s config set --auth.method=",
+        bin_path,
+        db_path, config_path)
+    if self.allow_no_auth then
+        config_auth_method_cmd = config_auth_method_cmd .. "noauth" .. silence_cmd
+    else
+        config_auth_method_cmd = config_auth_method_cmd .. "json" .. silence_cmd
+    end
+    logger.dbg("config_auth_method:", config_auth_method_cmd)
+    status = os.execute(config_auth_method_cmd)
+    logger.dbg("status:", status)
 
     if status == 0 then
-        logger.info("[Filebrowser] User 'koreader' has been created and auth has been disabled.")
+        logger.info("[Filebrowser] User 'koreader' has been created and auth has been set to ",
+            self.allow_no_auth and "noauth" or "json")
         local info = InfoMessage:new {
             text = _("Filebrowser initialized with user 'koreader' and default password 'koreader123456789'. Please change the password after login."),
         }
         UIManager:show(info)
     else
-        logger.info("[Filebrowser] Failed to reset admin password and auth, status Filebrowser, status:", status)
+        logger.info("[Filebrowser] Failed to reset admin password and auth, status Filebrowser:", status)
         local info = InfoMessage:new {
             icon = "notice-warning",
             text = _("Failed to reset Filebrowser config."),
@@ -244,6 +253,26 @@ function Filebrowser:addToMainMenu(menu_items)
                 enabled_func = function() return not self:isRunning() end,
                 callback = function(touchmenu_instance)
                     self:show_port_dialog(touchmenu_instance)
+                end,
+            },
+            {
+                text = _("Login without password (DANGEROUS)"),
+                checked_func = function() return self.allow_no_auth end,
+                enabled_func = function() return not self:isRunning() end,
+                callback = function()
+                    self.allow_no_auth = not self.allow_no_auth
+                    G_reader_settings:flipNilOrFalse("filebrowser_allow_no_auth")
+                    local config_auth_method_cmd = string.format("%s -d %s -c %s config set --auth.method=",
+                        bin_path,
+                        db_path, config_path)
+                    if self.allow_no_auth then
+                        config_auth_method_cmd = config_auth_method_cmd .. "noauth" .. silence_cmd
+                    else
+                        config_auth_method_cmd = config_auth_method_cmd .. "json" .. silence_cmd
+                    end
+                    logger.dbg("config_auth_method:", config_auth_method_cmd)
+                    local status = os.execute(config_auth_method_cmd)
+                    logger.dbg("status:", status)
                 end,
             },
         }
