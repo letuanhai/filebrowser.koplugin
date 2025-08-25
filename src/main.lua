@@ -1,13 +1,15 @@
 local DataStorage = require("datastorage")
-local Device =  require("device")
+local Device = require("device")
 local Dispatcher = require("dispatcher")
 local InfoMessage = require("ui/widget/infomessage")
+local InputDialog = require("ui/widget/inputdialog")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local ffiutil = require("ffi/util")
 local logger = require("logger")
 local util = require("util")
 local _ = require("gettext")
+local T = ffiutil.template
 
 local dataPath = "/"
 local path = DataStorage:getFullDataDir()
@@ -79,11 +81,11 @@ end
 -- set a pidfile, we launch it using the start-stop-daemon helper. On Kobo and Kindle,
 -- this command is provided by BusyBox:
 -- https://busybox.net/downloads/BusyBox.html#start_stop_daemon
--- 
+--
 -- The full version has slightly more options, but seems to be a superset of
 -- the BusyBox version, so it should also work with that:
 -- https://man.cx/start-stop-daemon(8)
--- 
+--
 -- Use a pidfile to identify the process later, set --oknodo to not fail if
 -- the process is already running and set --background to start as a
 -- background process. On Filebrowser itself, set the root directory,
@@ -117,9 +119,11 @@ function Filebrowser:start()
 
     -- Make a hole in the Kindle's firewall
     if Device:isKindle() then
-    logger.info("[Filebrowser] Opening port: ", self.filebrowser_port)
-        os.execute(string.format("iptables -A INPUT -p tcp --dport %s -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT", self.filebrowser_port))
-        os.execute(string.format("iptables -A OUTPUT -p tcp --sport %s -m conntrack --ctstate ESTABLISHED -j ACCEPT", self.filebrowser_port))
+        logger.info("[Filebrowser] Opening port: ", self.filebrowser_port)
+        os.execute(string.format("iptables -A INPUT -p tcp --dport %s -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT",
+            self.filebrowser_port))
+        os.execute(string.format("iptables -A OUTPUT -p tcp --sport %s -m conntrack --ctstate ESTABLISHED -j ACCEPT",
+            self.filebrowser_port))
     end
 end
 
@@ -164,9 +168,11 @@ function Filebrowser:stop()
 
     -- Plug the hole in the Kindle's firewall
     if Device:isKindle() then
-    logger.info("[Filebrowser] Closing port: ", self.filebrowser_port)
-        os.execute(string.format("iptables -D INPUT -p tcp --dport %s -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT", self.filebrowser_port))
-        os.execute(string.format("iptables -D OUTPUT -p tcp --sport %s -m conntrack --ctstate ESTABLISHED -j ACCEPT", self.filebrowser_port))
+        logger.info("[Filebrowser] Closing port: ", self.filebrowser_port)
+        os.execute(string.format("iptables -D INPUT -p tcp --dport %s -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT",
+            self.filebrowser_port))
+        os.execute(string.format("iptables -D OUTPUT -p tcp --sport %s -m conntrack --ctstate ESTABLISHED -j ACCEPT",
+            self.filebrowser_port))
     end
 end
 
@@ -178,19 +184,69 @@ function Filebrowser:onToggleFilebrowser()
     end
 end
 
+function Filebrowser:show_port_dialog(touchmenu_instance)
+    self.port_dialog = InputDialog:new {
+        title = _("Choose Filebrowser port"),
+        input = self.filebrowser_port,
+        input_type = "number",
+        input_hint = self.filebrowser_port,
+        buttons = {
+            {
+                {
+                    text = _("Cancel"),
+                    id = "close",
+                    callback = function()
+                        UIManager:close(self.port_dialog)
+                    end,
+                },
+                {
+                    text = _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local value = tonumber(self.port_dialog:getInputText())
+                        if value and value >= 0 then
+                            self.filebrowser_port = value
+                            G_reader_settings:saveSetting("filebrowser_port", self.filebrowser_port)
+                            UIManager:close(self.port_dialog)
+                            touchmenu_instance:updateItems()
+                        end
+                    end,
+                },
+            },
+        },
+    }
+    UIManager:show(self.port_dialog)
+    self.port_dialog:onShowKeyboard()
+end
+
 function Filebrowser:addToMainMenu(menu_items)
     menu_items.filebrowser = {
         text = _("Filebrowser"),
         sorting_hint = "network",
-        keep_menu_open = true,
-        checked_func = function() return self:isRunning() end,
-        callback = function(touchmenu_instance)
-            self:onToggleFilebrowser()
-            -- sleeping might not be needed, but it gives the feeling
-            -- something has been done and feedback is accurate
-            ffiutil.sleep(1)
-            touchmenu_instance:updateItems()
-        end,
+        sub_item_table = {
+            {
+                text = _("Filebrowser"),
+                keep_menu_open = true,
+                checked_func = function() return self:isRunning() end,
+                callback = function(touchmenu_instance)
+                    self:onToggleFilebrowser()
+                    -- sleeping might not be needed, but it gives the feeling
+                    -- something has been done and feedback is accurate
+                    ffiutil.sleep(1)
+                    touchmenu_instance:updateItems()
+                end,
+            },
+            {
+                text_func = function()
+                    return T(_("Filebrowser port (%1)"), self.filebrowser_port)
+                end,
+                keep_menu_open = true,
+                enabled_func = function() return not self:isRunning() end,
+                callback = function(touchmenu_instance)
+                    self:show_port_dialog(touchmenu_instance)
+                end,
+            },
+        }
     }
 end
 
