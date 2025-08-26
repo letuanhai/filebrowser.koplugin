@@ -29,8 +29,8 @@ local silence_cmd = ""
 -- uncomment below to prevent cmd output from cluttering up crash.log
 silence_cmd = " > /dev/null 2>&1"
 
-if not util.pathExists(bin_path) or os.execute("start-stop-daemon" .. silence_cmd) == 127 then
-    logger.info("[Filebrowser] filebrowser binary missing, plugin not loading")
+if os.execute("start-stop-daemon" .. silence_cmd) == 127 then
+    logger.info("[Filebrowser] start-stop-daemon not found, plugin not loading")
     return { disabled = true, }
 end
 
@@ -48,6 +48,17 @@ function Filebrowser:init()
 
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
+
+    if not util.pathExists(bin_path) then
+        logger.info("[Filebrowser] filebrowser binary missing")
+        local info = InfoMessage:new {
+            timeout = 5,
+            icon = "notice-warning",
+            text = _("filebrowser binary missing. Please update filebrowser."),
+        }
+        UIManager:show(info)
+        return
+    end
 end
 
 function Filebrowser:config()
@@ -418,6 +429,7 @@ function Filebrowser:addToMainMenu(menu_items)
                 text = _("Filebrowser"),
                 keep_menu_open = true,
                 checked_func = function() return self:isRunning() end,
+                enabled_func = function() return util.pathExists(bin_path) end,
                 callback = function(touchmenu_instance)
                     self:onToggleFilebrowser()
                     -- sleeping might not be needed, but it gives the feeling
