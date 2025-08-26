@@ -58,9 +58,17 @@ function Filebrowser:config()
     logger.dbg("init:", init_cmd)
     local status = os.execute(init_cmd)
 
-    local add_user_cmd = filebrowser_cmd .. "users add koreader koreader123456789 --perm.admin" .. silence_cmd
+    local default_user = "koreader"
+    local default_password = "koreader123456789"
+    local add_user_cmd = filebrowser_cmd ..
+        "users add " .. default_user .. " " .. default_password .. " --perm.admin" .. silence_cmd
     logger.dbg("create_user:", add_user_cmd)
     status = os.execute(add_user_cmd)
+    logger.dbg("status:", status)
+    -- restrict user scope to /mnt/us, somehow adding this to the add_user_cmd doesn't work
+    local update_user_cmd = filebrowser_cmd .. "users update " .. default_user .. " --scope /mnt/us" .. silence_cmd
+    logger.dbg("update_user:", update_user_cmd)
+    status = os.execute(update_user_cmd)
     logger.dbg("status:", status)
 
     local config_auth_method_cmd = string.format("%s -d %s -c %s config set --auth.method=",
@@ -76,10 +84,10 @@ function Filebrowser:config()
     logger.dbg("status:", status)
 
     if status == 0 then
-        logger.info("[Filebrowser] User 'koreader' has been created and auth has been set to ",
+        logger.info("[Filebrowser] User '" .. default_user .. "' has been created and auth has been set to ",
             self.allow_no_auth and "noauth" or "json")
         local info = InfoMessage:new {
-            text = _("Filebrowser initialized with user 'koreader' and default password 'koreader123456789'. Please change the password after login."),
+            text = _("Filebrowser initialized with user '" .. default_user .. "' and default password '" .. default_password .. "'. Please change the password after login."),
         }
         UIManager:show(info)
     else
