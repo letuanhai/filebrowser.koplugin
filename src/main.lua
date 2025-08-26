@@ -10,6 +10,8 @@ local logger = require("logger")
 local util = require("util")
 local _ = require("gettext")
 local T = ffiutil.template
+local http = require("socket.http")
+local ltn12 = require("ltn12")
 
 local dataPath = "/"
 local path = DataStorage:getFullDataDir()
@@ -21,6 +23,7 @@ local filebrowser_args = string.format("-d %s -c %s ", db_path, config_path)
 local filebrowser_cmd = bin_path .. " " .. filebrowser_args
 local log_path = plugin_path .. "/filebrowser.log"
 local pid_path = "/tmp/filebrowser_koreader.pid"
+local filebrowser_url = "https://github.com/filebrowser/filebrowser/releases/latest/download/%s-%s-filebrowser.tar.gz"
 
 local silence_cmd = ""
 -- uncomment below to prevent cmd output from cluttering up crash.log
@@ -40,6 +43,9 @@ function Filebrowser:init()
     self.filebrowser_port = G_reader_settings:readSetting("filebrowser_port") or "80"
     self.filebrowser_password_hash = G_reader_settings:readSetting("filebrowser_password") or "admin"
     self.allow_no_auth = G_reader_settings:isTrue("filebrowser_allow_no_auth")
+
+    self:get_filebrowser_version()
+
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
 end
@@ -228,6 +234,98 @@ function Filebrowser:show_port_dialog(touchmenu_instance)
     self.port_dialog:onShowKeyboard()
 end
 
+function Filebrowser:get_filebrowser_version()
+    self.filebrowser_version = "unknown"
+    local version_output = io.popen(string.format("%s version", bin_path)):read("*a")
+    if version_output then
+        -- Extract version number from output like "File Browser v2.42.5/cacfb2bc"
+        local version_match = version_output:match("v([%d%.]+)")
+        if version_match then
+            self.filebrowser_version = "v" .. version_match
+        end
+    end
+end
+
+function Filebrowser:download_filebrowser_binary()
+    -- get platform and arch using uname -s and uname -m
+    local platform = io.popen("uname -s"):read("*a"):lower()
+    local arch = io.popen("uname -m"):read("*a"):lower()
+    logger.dbg("platform:", platform)
+    logger.dbg("arch:", arch)
+    platform = platform:match("^%s*(.-)%s*$")
+    arch = arch:match("^%s*(.-)%s*$")
+
+    if platform ~= "linux" and platform ~= "darwin" then
+        local info = InfoMessage:new {
+            timeout = 2,
+            text = _("Unsupported platform: " .. platform .. ". Please download the binary manually.")
+        }
+        UIManager:show(info)
+        return
+    end
+
+    if arch:match("^armv%d") then
+        arch = arch:match("^armv%d")
+    elseif arch:match("^aarch64") or arch:match("^arm64") then
+        arch = "arm64"
+    elseif arch:match("^x86_64") or arch:match("^amd64") then
+        arch = "amd64"
+    else
+        local info = InfoMessage:new {
+            timeout = 2,
+            text = _("Unsupported architecture: " .. arch .. ". Please download the binary manually.")
+        }
+        UIManager:show(info)
+        return
+    end
+
+    local tmp_dir = plugin_path .. '/filebrowser_update'
+    os.execute(string.format("rm -rf %s", tmp_dir))
+    os.execute(string.format("mkdir -p %s", tmp_dir))
+
+    -- download latest release of filebrowser from github
+    local filebrowser_url = string.format(filebrowser_url, platform, arch)
+    logger.dbg("filebrowser_url:", filebrowser_url)
+    local download_file = tmp_dir .. "/filebrowser.tar.gz"
+
+    local res, code = http.request {
+        url = filebrowser_url,
+        sink = ltn12.sink.file(io.open(download_file, "wb"))
+    }
+    if res == nil or code ~= 200 then
+        logger.warn("[Filebrowser] Failed to download filebrowser binary, code:", code)
+        local info = InfoMessage:new {
+            icon = "notice-warning",
+            text = _("Failed to download filebrowser binary."),
+        }
+        UIManager:show(info)
+        return
+    end
+
+    -- extract the binary to the plugin directory
+    local res, err = Device:unpackArchive(download_file, tmp_dir)
+    if not res then
+        logger.warn("[Filebrowser] Failed to extract filebrowser binary, error:", err)
+        local info = InfoMessage:new {
+            icon = "notice-warning",
+            text = _("Failed to extract filebrowser binary."),
+        }
+        UIManager:show(info)
+        return
+    end
+
+    -- copy the binary to the plugin directory
+    os.execute(string.format("cp -f %s/filebrowser %s", tmp_dir, bin_path))
+    -- remove the temporary directory
+    os.execute(string.format("rm -rf %s", tmp_dir))
+
+    local info = InfoMessage:new {
+        timeout = 5,
+        text = _("filebrowser binary updated!")
+    }
+    UIManager:show(info)
+end
+
 function Filebrowser:addToMainMenu(menu_items)
     menu_items.filebrowser = {
         text = _("Filebrowser"),
@@ -273,6 +371,18 @@ function Filebrowser:addToMainMenu(menu_items)
                     logger.dbg("config_auth_method:", config_auth_method_cmd)
                     local status = os.execute(config_auth_method_cmd)
                     logger.dbg("status:", status)
+                end,
+            },
+            {
+                text_func = function()
+                    return T(_("Update filebrowser (current: %1)"), self.filebrowser_version)
+                end,
+                keep_menu_open = true,
+                enabled_func = function() return not self:isRunning() end,
+                callback = function(touchmenu_instance)
+                    self:download_filebrowser_binary()
+                    self:get_filebrowser_version()
+                    touchmenu_instance:updateItems()
                 end,
             },
         }
