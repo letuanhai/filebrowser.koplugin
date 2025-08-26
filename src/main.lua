@@ -242,6 +242,71 @@ function Filebrowser:show_port_dialog(touchmenu_instance)
     self.port_dialog:onShowKeyboard()
 end
 
+function Filebrowser:show_filebrowser_update_dialog()
+    local latest_version = self:get_filebrowser_latest_version()
+    if not latest_version then
+        local info = InfoMessage:new {
+            timeout = 5,
+            icon = "notice-warning",
+            text = _("Failed to check for filebrowser update. Please check manually."),
+        }
+        UIManager:show(info)
+        return
+    end
+
+    if self.filebrowser_version == latest_version then
+        local info = InfoMessage:new {
+            timeout = 2,
+            text = _("Filebrowser is up to date."),
+        }
+        UIManager:show(info)
+        return
+    end
+
+    self.filebrowser_update_dialog = InputDialog:new {
+        title = _("Check for filebrowser update"),
+        input = T(_("Current version: %1\nLatest version: %2\n\nUpdate filebrowser?"), self.filebrowser_version, latest_version),
+        buttons = {
+            {
+                {
+                    text = _("Cancel"),
+                    id = "close",
+                    callback = function()
+                        UIManager:close(self.filebrowser_update_dialog)
+                    end,
+                },
+                {
+                    text = _("Update"),
+                    callback = function()
+                        self:download_filebrowser_binary()
+                        self:get_filebrowser_version()
+                        UIManager:close(self.filebrowser_update_dialog)
+                    end,
+                },
+            },
+        },
+    }
+    UIManager:show(self.filebrowser_update_dialog)
+end
+
+function Filebrowser:get_filebrowser_latest_version()
+    local filebrowser_download_url = self:get_filebrowser_download_url()
+    if not filebrowser_download_url then
+        return
+    end
+
+    local b, code, headers = http.request {
+        url = filebrowser_download_url,
+        redirect = false,
+    }
+    if b ~= 1 or code ~= 302 or headers.location == nil then
+        logger.warn("[Filebrowser] Failed to get filebrowser latest version, code:", code)
+        return
+    end
+
+    return headers.location:match("v[%d%.]+")
+end
+
 function Filebrowser:get_filebrowser_version()
     self.filebrowser_version = "unknown"
     local version_output = io.popen(string.format("%s version", bin_path)):read("*a")
@@ -255,35 +320,8 @@ function Filebrowser:get_filebrowser_version()
 end
 
 function Filebrowser:download_filebrowser_binary()
-    -- get platform and arch using uname -s and uname -m
-    local platform = io.popen("uname -s"):read("*a"):lower()
-    local arch = io.popen("uname -m"):read("*a"):lower()
-    logger.dbg("platform:", platform)
-    logger.dbg("arch:", arch)
-    platform = platform:match("^%s*(.-)%s*$")
-    arch = arch:match("^%s*(.-)%s*$")
-
-    if platform ~= "linux" and platform ~= "darwin" then
-        local info = InfoMessage:new {
-            timeout = 2,
-            text = _("Unsupported platform: " .. platform .. ". Please download the binary manually.")
-        }
-        UIManager:show(info)
-        return
-    end
-
-    if arch:match("^armv%d") then
-        arch = arch:match("^armv%d")
-    elseif arch:match("^aarch64") or arch:match("^arm64") then
-        arch = "arm64"
-    elseif arch:match("^x86_64") or arch:match("^amd64") then
-        arch = "amd64"
-    else
-        local info = InfoMessage:new {
-            timeout = 2,
-            text = _("Unsupported architecture: " .. arch .. ". Please download the binary manually.")
-        }
-        UIManager:show(info)
+    local download_url = self:get_filebrowser_download_url()
+    if not download_url then
         return
     end
 
@@ -292,12 +330,11 @@ function Filebrowser:download_filebrowser_binary()
     os.execute(string.format("mkdir -p %s", tmp_dir))
 
     -- download latest release of filebrowser from github
-    local filebrowser_url = string.format(filebrowser_url, platform, arch)
-    logger.dbg("filebrowser_url:", filebrowser_url)
+    logger.dbg("download_url:", download_url)
     local download_file = tmp_dir .. "/filebrowser.tar.gz"
 
     local res, code = http.request {
-        url = filebrowser_url,
+        url = download_url,
         sink = ltn12.sink.file(io.open(download_file, "wb"))
     }
     if res == nil or code ~= 200 then
@@ -328,10 +365,48 @@ function Filebrowser:download_filebrowser_binary()
     os.execute(string.format("rm -rf %s", tmp_dir))
 
     local info = InfoMessage:new {
-        timeout = 5,
+        timeout = 2,
         text = _("filebrowser binary updated!")
     }
     UIManager:show(info)
+end
+
+function Filebrowser:get_filebrowser_download_url()
+    -- get platform and arch using uname -s and uname -m
+    local platform = io.popen("uname -s"):read("*a"):lower()
+    local arch = io.popen("uname -m"):read("*a"):lower()
+    logger.dbg("platform:", platform)
+    logger.dbg("arch:", arch)
+    platform = platform:match("^%s*(.-)%s*$")
+    arch = arch:match("^%s*(.-)%s*$")
+
+    if platform ~= "linux" and platform ~= "darwin" then
+        local info = InfoMessage:new {
+            timeout = 5,
+            icon = "notice-warning",
+            text = _("Unsupported platform: " .. platform .. ". Please download the binary manually.")
+        }
+        UIManager:show(info)
+        return
+    end
+
+    if arch:match("^armv%d") then
+        arch = arch:match("^armv%d")
+    elseif arch:match("^aarch64") or arch:match("^arm64") then
+        arch = "arm64"
+    elseif arch:match("^x86_64") or arch:match("^amd64") then
+        arch = "amd64"
+    else
+        local info = InfoMessage:new {
+            timeout = 5,
+            icon = "notice-warning",
+            text = _("Unsupported architecture: " .. arch .. ". Please download the binary manually.")
+        }
+        UIManager:show(info)
+        return
+    end
+
+    return string.format(filebrowser_url, platform, arch)
 end
 
 function Filebrowser:addToMainMenu(menu_items)
@@ -388,8 +463,7 @@ function Filebrowser:addToMainMenu(menu_items)
                 keep_menu_open = true,
                 enabled_func = function() return not self:isRunning() end,
                 callback = function(touchmenu_instance)
-                    self:download_filebrowser_binary()
-                    self:get_filebrowser_version()
+                    self:show_filebrowser_update_dialog()
                     touchmenu_instance:updateItems()
                 end,
             },
